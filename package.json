@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "ddp.js": "2.2.0",
-    "events": "1.1.1"
+    "events": "1.1.1",
+    "js-sha256": "0.6.0"
   },
   "devDependencies": {
     "babel-cli": "6.24.1",

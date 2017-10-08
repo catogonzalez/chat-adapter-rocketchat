@@ -17,23 +17,26 @@ export default class ChatAdapterRocketChat {
   init(config) {
     // sample config:
     // var config = {
-    //  backendUrl: 'https://chat-stg.121services.co',
-    //  initData: {
+    // backendUrl: 'https://chat-stg.121services.co',
+    // mode: 'private',
+    // initData: {
     //    adminUsername: 'admin',
     //    adminPassword: 'admin',
     //    data: {*appId: YYY} <- fill in with a room id
-    //  }
+    // }
     // }
     console.debug('Initializing communication with Rocket Chat...');
 
     this._backendUrl = config.backendUrl;
+    this._mode = config.mode;
+
     // TODO *adapter.init json object to send to backend as initialization result will fire a ChatAdapter::onInit event
     this._initData = config.initData;
     let self = this;
 
     return new Promise(function (resolve, reject) {
       self._client = new RocketChat(self._backendUrl, self._initData.adminUsername,
-          self._initData.adminPassword, self._initData.data.appId, self._eventBus);
+          self._initData.adminPassword, self._mode, self._initData.data.appId, self._eventBus);
 
       self._client.init()
           .then(response => {
