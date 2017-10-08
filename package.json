@@ -1,0 +1,33 @@
+{
+  "name": "chat-adapter-rocketchat",
+  "version": "0.0.2",
+  "description": "Rocket Chat adapter for 121 Services' Universal Chat Widget",
+  "main": "lib/ChatAdapterRocketChat.js",
+  "scripts": {
+    "build": "webpack --env build",
+    "dev": "webpack --progress --colors --watch --env dev",
+    "test": "mocha --compilers js:babel-core/register --colors ./test/*.spec.js",
+    "test:watch": "mocha --compilers js:babel-core/register --colors -w ./test/*.spec.js"
+  },
+  "dependencies": {
+    "ddp.js": "2.2.0",
+    "events": "1.1.1"
+  },
+  "devDependencies": {
+    "babel-cli": "6.24.1",
+    "babel-core": "6.24.1",
+    "babel-eslint": "7.2.3",
+    "babel-loader": "7.0.0",
+    "babel-plugin-add-module-exports": "0.2.1",
+    "babel-preset-es2015": "^6.24.1",
+    "chai": "3.5.0",
+    "eslint": "3.19.0",
+    "eslint-loader": "1.7.1",
+    "mocha": "3.3.0",
+    "webpack": "3.1.0",
+    "yargs": "7.1.0"
+  },
+  "author": "121 Services SAS",
+  "license": "MIT",
+  "homepage": "https://121.services"
+}
