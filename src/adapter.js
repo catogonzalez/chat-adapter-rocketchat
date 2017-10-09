@@ -3,6 +3,10 @@ import RocketChat from './client';
 
 export default class ChatAdapterRocketChat {
   constructor() {
+    this._MODES = [
+      'private', 'livechat'
+    ];
+
     this._name = 'ChatAdapterRocketChat';
     this._eventBus = new EventEmitter();
   }
@@ -18,17 +22,22 @@ export default class ChatAdapterRocketChat {
     // sample config:
     // var config = {
     // backendUrl: 'https://chat-stg.121services.co',
-    // mode: 'private',
+    // mode: 'private', // or 'livechat'
     // initData: {
     //    adminUsername: 'admin',
     //    adminPassword: 'admin',
     //    data: {*appId: YYY} <- fill in with a room id
     // }
     // }
+
+    this._mode = config.mode.toLowerCase();
+    if (!this._MODES.includes(this._mode)) {
+      throw new Error(`RocketChat unsupported mode ${config.mode}: use either livechat or private`);
+    }
+
     console.debug('Initializing communication with Rocket Chat...');
 
     this._backendUrl = config.backendUrl;
-    this._mode = config.mode;
 
     // TODO *adapter.init json object to send to backend as initialization result will fire a ChatAdapter::onInit event
     this._initData = config.initData;
@@ -39,21 +48,20 @@ export default class ChatAdapterRocketChat {
           self._initData.adminPassword, self._mode, self._initData.data.appId, self._eventBus);
 
       self._client.init()
-          .then(response => {
-            if (response.ok) {
-              // both rest api and realtime api are succesfully authenticated, given user and password are correct
-              console.debug('both rest api and realtime api are succesfully authenticated');
-              resolve(response);
-            } else {
-              // some error ocurred
-              console.error('Error initializing communication with Rocket Chat:', response.error);
-              reject(`Error initializing communication with Rocket Chat: ${response.error}`);
-            }
-          })
-          .catch(error => {
-            console.error('Error initializing communication with Rocket Chat:', error);
-            reject(error.message);
-          });
+      .then(response => {
+        if (response.ok) {
+          // both rest api and realtime api are succesfully authenticated, given user and password are correct
+          resolve(response);
+        } else {
+          // some error ocurred
+          console.error('Error initializing communication with Rocket Chat:', response.error);
+          reject(`Error initializing communication with Rocket Chat: ${response.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error initializing communication with Rocket Chat:', error);
+        reject(error.message);
+      });
     });
   }
 
@@ -76,7 +84,7 @@ export default class ChatAdapterRocketChat {
     // }
     //
     var lastTime = data === undefined ? Date.now() : data.time;
-    
+
     return self._client.getOlderMessages(lastTime);
   }
 }

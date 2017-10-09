@@ -4,14 +4,6 @@ import sha256 from 'js-sha256';
 export default class RocketChat {
 
   constructor(rocketChatUrl, adminUsername, adminPassword, mode, roomId, eventBus) {
-    this._MODES = [
-      'private', 'livechat'
-    ];
-
-    if (!this._MODES.includes(mode.toLowerCase())) {
-      throw new Error(`RocketChat unsupported mode ${mode}: use either livechat or private`);
-    }
-
     this._url = rocketChatUrl;
     this._adminUsername = adminUsername;
     this._adminPassword = adminPassword;
