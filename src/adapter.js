@@ -76,8 +76,7 @@ export default class ChatAdapterRocketChat {
     // }
     //
     var lastTime = data === undefined ? Date.now() : data.time;
-
-    console.debug('requestOlderMessages', lastTime);
+    
     return self._client.getOlderMessages(lastTime);
   }
 }

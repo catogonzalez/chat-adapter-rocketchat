@@ -44,6 +44,10 @@ export default class RocketChat {
                                         resolve({
                                           ok: true,
                                           message: 'Rocket Chat connected and subscribed to messages',
+                                          user: {
+                                            username: self._adminUsername,
+                                            avatar: self._userAvatar
+                                          },
                                           message_count: self._messageCount,
                                           last_messages: self._lastMessages
                                         });
@@ -227,7 +231,6 @@ export default class RocketChat {
       self._ddpClient.on('result', message => {
         if (message.id === methodId) {
           if (!message.error) {
-            console.log(message.result.messages);
             self._messageCount = 1000; // TODO: figure out how to read a total message count from RC
             messages = message.result.messages;
             messages = messages.map(m => {
@@ -262,6 +265,13 @@ export default class RocketChat {
     //  elements: msg.elements,
     //  attachment: msg.attachment
     // }
+
+    if (this._userAvatar === undefined && rocketMsg.avatar !== undefined) {
+      // update user avatar
+      // TODO: find a better method to read user avatar from RC
+      this._userAvatar = rocketMsg.avatar;
+    }
+
     return {
       time: rocketMsg.ts.$date,
       from: {
