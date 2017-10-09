@@ -68,30 +68,16 @@ export default class ChatAdapterRocketChat {
   requestOlderMessages(data) {
     var self = this;
 
-    return new Promise(function (resolve, reject) {
-      if (self._olderMessagesEndpoint === undefined || self._olderMessagesEndpoint === '') {
-        reject('olderMessagesEndpoint is not defined. Unable to retrieve older messages');
-      } else {
-        let url = self._backendUrl + self._olderMessagesEndpoint;
+    // data = {
+    //   appId: _appId,
+    //   deviceId: _deviceId,
+    //   id: id of first already visible message,
+    //   time: time of first already visible message
+    // }
+    //
+    var lastTime = data === undefined ? Date.now() : data.time;
 
-        fetch(url, {
-          method: 'post',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        }).then(response => {
-          if (response.ok) {
-            response.json().then(json => {
-              resolve(json);
-            });
-          } else {
-            reject('HTTP error: ' + response.status);
-          }
-        }).catch(error => {
-          reject(error.message);
-        });
-      }
-    });
+    console.debug('requestOlderMessages', lastTime);
+    return self._client.getOlderMessages(lastTime);
   }
 }

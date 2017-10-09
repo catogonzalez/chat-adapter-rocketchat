@@ -29,28 +29,54 @@ export default class RocketChat {
     return new Promise(function (resolve, reject) {
       try {
         self.connectSocket()
-            .then(response => {
+        .then(response => {
               if (response.ok) {
                 self.login()
-                    .then(response => {
+                .then(response => {
                       if (response.ok) {
-                        self.subscribeToChannel(self._roomId)
-                            .then(response => {
-                              if (response.ok) {
-                                resolve({ok: true, message: 'Rocket Chat connected and subscribed to messages'});
+                        self.getOlderMessages()
+                        .then(response => {
+                              if (response.status === 200) {
+                                self._lastMessages = response.data;
+                                self.subscribeToChannel(self._roomId)
+                                .then(response => {
+                                      if (response.ok) {
+                                        resolve({
+                                          ok: true,
+                                          message: 'Rocket Chat connected and subscribed to messages',
+                                          message_count: self._messageCount,
+                                          last_messages: self._lastMessages
+                                        });
+                                      } else {
+                                        reject({ok: false, message: response.message});
+                                      }
+                                    },
+                                    err => {
+                                      reject({ok: false, message: err.message});
+                                    });
                               } else {
                                 reject({ok: false, message: response.message});
                               }
+                            },
+                            err => {
+                              reject({ok: false, message: err.message});
                             });
                       } else {
                         reject({ok: false, message: response.message});
                       }
+                    },
+                    err => {
+                      reject({ok: false, message: err.message});
                     });
               } else {
                 reject({ok: false, message: response.message});
               }
+            },
+            err => {
+              reject({ok: false, message: err.message});
             });
-      } catch (err) {
+      } catch
+          (err) {
         reject({ok: false, message: err.message});
       }
     });
@@ -90,13 +116,12 @@ export default class RocketChat {
       self._ddpClient.on('result', message => {
         if (message.id === methodId) {
           if (!message.error) {
-            self._authToken = message.result.authToken;
+            self._authToken = message.result.token;
             self._userId = message.result.id;
             self._tokenExpires = message.result.tokenExpires; // TODO: handle expired tokens
             resolve({ok: true});
           } else {
-            reject(':', message);
-            reject({ok: false, message: `Error logging in: ${message}`});
+            reject({ok: false, message: `Error logging in: ${message.error.message}`});
           }
         }
       });
@@ -165,38 +190,12 @@ export default class RocketChat {
 
     if (args !== null && args !== undefined) {
       if (args.length > 0) {
-        from = args[0].u.username;
-        if (from !== self._adminUsername) {
+        from = args[0].u._id;
+        if (from !== this._userId) {
           // new message from some chat user other than the browser user
           // TODO: handle more than one (first) entry in this array
           args = args[0];
-
-          // Create new message for universal chat widget;
-          // must be in 121 Services message format:
-          // {
-          //  time: msg.sent_at,
-          //  from: {
-          //    username: msg.session.bot.display_name,
-          //    avatar: msg.session.bot.avatar_url
-          //  },
-          //  text: msg.text,
-          //  direction: msg.direction,
-          //  buttons: msg.buttons,
-          //  elements: msg.elements,
-          //  attachment: msg.attachment
-          // }
-          data = {
-            time: args.ts.$date,
-            from: {
-              username: from,
-              avatar: ''
-            },
-            text: args.msg,
-            direction: 2,
-            buttons: null,
-            elements: null,
-            attachment: null
-          };
+          data = this.convertMessage(args);
           this._eventBus.emit('ucw:newRemoteMessage', data);
         }
       }
@@ -211,6 +210,70 @@ export default class RocketChat {
         'msg': data.text
       }
     ]);
+  }
+
+  getOlderMessages(lastTime) {
+    var self = this;
+    var messages;
+
+    const methodId = self._ddpClient.method('loadHistory', [
+      self._roomId,
+      lastTime === undefined ? null : {'$date': lastTime}, // since when to read
+      10, // # of messages to retrieve
+      {'$date': Date.now()} // last time user read messages
+    ]);
+
+    return new Promise(function (resolve, reject) {
+      self._ddpClient.on('result', message => {
+        if (message.id === methodId) {
+          if (!message.error) {
+            console.log(message.result.messages);
+            self._messageCount = 1000; // TODO: figure out how to read a total message count from RC
+            messages = message.result.messages;
+            messages = messages.map(m => {
+              return self.convertMessage(m);
+            });
+            messages.sort(function (a, b) {
+              // Turn your strings into dates, and then subtract them
+              // to get a value that is either negative, positive, or zero.
+              return new Date(a.time) - new Date(b.time);
+            });
+            resolve({status: 200, data: messages});
+          } else {
+            reject({status: 500, message: `Error loading messages: ${message.error.message}`});
+          }
+        }
+      });
+    });
+  }
+
+  convertMessage(rocketMsg) {
+    // Create new message for universal chat widget;
+    // in 121 Services message format:
+    // {
+    //  time: msg.sent_at,
+    //  from: {
+    //    username: msg.session.bot.display_name,
+    //    avatar: msg.session.bot.avatar_url
+    //  },
+    //  text: msg.text,
+    //  direction: msg.direction,
+    //  buttons: msg.buttons,
+    //  elements: msg.elements,
+    //  attachment: msg.attachment
+    // }
+    return {
+      time: rocketMsg.ts.$date,
+      from: {
+        username: rocketMsg.u.name || rocketMsg.u.username,
+        avatar: rocketMsg.avatar || ''
+      },
+      text: rocketMsg.msg,
+      direction: rocketMsg.u._id === this._userId ? 1 : 2,
+      buttons: null,
+      elements: null,
+      attachment: null
+    };
   }
 
   // support function for dev purposes. Not used in production code
