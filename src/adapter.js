@@ -24,12 +24,15 @@ export default class ChatAdapterRocketChat {
     // backendUrl: 'https://chat-stg.121services.co',
     // mode: 'private', // or 'livechat'
     // initData: {
-    //    adminUsername: 'admin',
-    //    adminPassword: 'admin',
-    //    data: {*appId: YYY} <- fill in with a room id
+    //    username: 'admin',
+    //    password: 'admin',
+    //    data: {*roomId: YYY} <- when mode is 'private', fill in with a room id; when mode is 'livechat' fill in a departmentId
     // }
     // }
 
+    // console.debug('RC Adapter init', config);
+
+    this._deviceId = config.initData.data.deviceId;
     this._mode = config.mode.toLowerCase();
     if (!this._MODES.includes(this._mode)) {
       throw new Error(`RocketChat unsupported mode ${config.mode}: use either livechat or private`);
@@ -38,14 +41,20 @@ export default class ChatAdapterRocketChat {
     console.debug('Initializing communication with Rocket Chat...');
 
     this._backendUrl = config.backendUrl;
-
-    // TODO *adapter.init json object to send to backend as initialization result will fire a ChatAdapter::onInit event
     this._initData = config.initData;
     let self = this;
+    let clientConfig = {
+      deviceId: self._deviceId,
+      backendUrl: self._backendUrl,
+      username: self._initData.username,
+      password: self._initData.password,
+      mode: self._mode,
+      roomId: self._initData.data.roomId,
+      eventBus: self._eventBus
+    };
 
     return new Promise(function (resolve, reject) {
-      self._client = new RocketChat(self._backendUrl, self._initData.adminUsername,
-          self._initData.adminPassword, self._mode, self._initData.data.appId, self._eventBus);
+      self._client = new RocketChat(clientConfig);
 
       self._client.init()
       .then(response => {
@@ -77,7 +86,6 @@ export default class ChatAdapterRocketChat {
     var self = this;
 
     // data = {
-    //   appId: _appId,
     //   deviceId: _deviceId,
     //   id: id of first already visible message,
     //   time: time of first already visible message
