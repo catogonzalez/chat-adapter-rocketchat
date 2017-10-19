@@ -7,19 +7,30 @@ export default class RocketChat {
     // config has:
     // deviceId: xyz,
     // backendUrl: http://rocket.chat,
-    // username: username,
-    // password: password,
+    // eventBus: EventEmiter instance
     // mode: livechat or private,
     // roomId: when livechat => departmentId, when private => channelId,
-    // eventBus: EventEmiter instance
+    // username: username, => only needed when mode == private
+    // password: password, => only needed when mode == private
 
     this._deviceId = config.deviceId;
     this._url = config.backendUrl;
-    this._username = config.username;
-    this._password = config.password;
     this._mode = config.mode.toLowerCase();
-    this._roomId = config.roomId;
     this._eventBus = config.eventBus;
+    this._username = config.username;
+    this._email = config.email;
+
+    this._deferRoomSubscription = false;
+
+    if (this._mode === 'livechat') {
+      // save roomId as departmentId and use deviceId as room
+      this._departmentId = config.roomId;
+      this._roomId = config.deviceId;
+    } else {
+      // when mode == 'private' roomId should be the intended channelId to connect to
+      this._roomId = config.roomId;
+      this._password = config.password;
+    }
 
     console.debug('RC Adapter Client init', config);
   }
@@ -95,6 +106,7 @@ export default class RocketChat {
   }
 
   initLivechatMode() {
+    var msg = 'No livechat agents are online at this moment';
     let self = this;
 
     return new Promise(function (resolve, reject) {
@@ -106,11 +118,14 @@ export default class RocketChat {
                 .then(response => {
                       if (response.ok) {
                         if (!self._livechatConfig.enabled) {
-                          reject({ok: false, message: 'Livechat is not enabled in backend'});
+                          reject({ok: false, message: 'Livechat is not enabled in the rocket.chat server'});
                           return;
                         }
                         if (!self._livechatConfig.online) {
-                          reject({ok: false, message: 'No livechat agents are online at this moment'});
+                          if (self._livechatConfig.offlineMessage !== '') {
+                            msg = self._livechatConfig.offlineMessage;
+                          }
+                          reject({ok: false, message: msg});
                           return;
                         }
                         self.registerGuest()
@@ -119,12 +134,12 @@ export default class RocketChat {
                                 self.loginWithToken()
                                 .then(response => {
                                       if (response.ok) {
-                                        if (self._livechatConfig.room !== null) {
-                                          // there was a previous conversation: retrieve older messages on the same room
-                                          self.getOlderMessages()
-                                          .then(response => {
-                                                if (response.status === 200) {
-                                                  self._lastMessages = response.data;
+                                        // if there was a previous conversation: retrieve older messages on the same room
+                                        self.getOlderMessages()
+                                        .then(response => {
+                                              if (response.status === 200) {
+                                                self._lastMessages = response.data;
+                                                if (!self._deferRoomSubscription) {
                                                   self.subscribeToChannel(self._deviceId)
                                                   .then(response => {
                                                         if (response.ok) {
@@ -146,29 +161,24 @@ export default class RocketChat {
                                                         reject({ok: false, message: err.message});
                                                       });
                                                 } else {
-                                                  reject({ok: false, message: response.message});
+                                                  resolve({
+                                                    ok: true,
+                                                    message: 'Rocket Chat livechat connected. Will subscribe to room messages on first message sent from user.',
+                                                    user: {
+                                                      username: self._username,
+                                                      avatar: null
+                                                    },
+                                                    message_count: 0,
+                                                    last_messages: []
+                                                  });
                                                 }
-                                              },
-                                              err => {
-                                                reject({ok: false, message: err.message});
-                                              });
-                                        } else {
-                                          // No previous conversation on livechat. Defer subscribeToChannel when first message is sent
-                                          self._userAvatar = null;
-                                          self._messageCount = 0;
-                                          self._lastMessages = [];
-
-                                          resolve({
-                                            ok: true,
-                                            message: 'Rocket Chat livechat connected. Will subscribe to room messages on first message sent.',
-                                            user: {
-                                              username: self._username,
-                                              avatar: self._userAvatar
+                                              } else {
+                                                reject({ok: false, message: response.message});
+                                              }
                                             },
-                                            message_count: self._messageCount,
-                                            last_messages: self._lastMessages
-                                          });
-                                        }
+                                            err => {
+                                              reject({ok: false, message: err.message});
+                                            });
                                       } else {
                                         reject({ok: false, message: response.message});
                                       }
@@ -262,6 +272,7 @@ export default class RocketChat {
           self._ddpClient.on('changed', message => {
             self.handleNewMessage(message);
           });
+          console.debug('subscribeToChannel ready', message);
           resolve({ok: true, message: 'stream-room-messages subscription ready'});
         } else {
           reject({ok: false, message: `Could not subscribe to RC room messages on ready: ${JSON.stringify(message)}`});
@@ -277,6 +288,8 @@ export default class RocketChat {
   getInitialData() {
     var self = this;
 
+    // we use deviceId as the random visitor token described in RC docs
+    // https://docs.rocket.chat/developer-guides/realtime-api/livechat-api/
     const methodId = self._ddpClient.method('livechat:getInitialData', [self._deviceId]);
 
     return new Promise(function (resolve, reject) {
@@ -297,12 +310,11 @@ export default class RocketChat {
   registerGuest() {
     var self = this;
 
-    this._username = 'test1'; // TODO: check if this conflicts with normal username usage
     const methodId = self._ddpClient.method('livechat:registerGuest', [{
       'token': self._deviceId,
       'name': this._username,
-      'email': 'test2@gmail.com',
-      'department': self._roomId
+      'email': this._email,
+      'department': self._departmentId
     }]);
 
     return new Promise(function (resolve, reject) {
@@ -373,7 +385,11 @@ export default class RocketChat {
                 });
           }
         } else {
-          console.error(`Error sending livechat message: ${message.error.message}`);
+          if (message.error.error === 'no-agent-online') {
+            console.error(`Error sending livechat message: ${message.error.message}. Check department with id '${self._departmentId}' exists`);
+          } else {
+            console.error(`Error sending livechat message: ${message.error.message}`);
+          }
         }
       }
     });
@@ -470,7 +486,16 @@ export default class RocketChat {
             });
             resolve({status: 200, data: messages});
           } else {
-            reject({status: 500, message: `Error loading messages: ${message.error.message}`});
+            if (message.error.error == 'error-invalid-room') {
+              // this error fires on the first interaction with rocket chat: the room is just not yet created
+              // we defer subscription to room messages until the first message from the user
+              self._deferRoomSubscription = true;
+              self._messageCount = 0;
+              resolve({status: 200, data: []});
+            } else {
+              // some other error cause: bubble up the exception
+              reject({status: 500, message: `Error loading messages: ${message.error.message}`});
+            }
           }
         }
       });
