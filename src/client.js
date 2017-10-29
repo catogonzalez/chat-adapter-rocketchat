@@ -486,7 +486,7 @@ export default class RocketChat {
             });
             resolve({status: 200, data: messages});
           } else {
-            if (message.error.error == 'error-invalid-room') {
+            if (message.error.error === 'error-invalid-room') {
               // this error fires on the first interaction with rocket chat: the room is just not yet created
               // we defer subscription to room messages until the first message from the user
               self._deferRoomSubscription = true;
