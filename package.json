@@ -1,7 +1,8 @@
 {
   "name": "chat-adapter-rocketchat",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Rocket Chat adapter for 121 Services' Universal Chat Widget",
+  "keywords": ["chat", "widget", "chatbots", "vue", "vuejs", "rocketchat","livechat", "wss"],
   "main": "lib/ChatAdapterRocketChat.js",
   "scripts": {
     "build": "webpack --env build",
@@ -28,7 +29,12 @@
     "webpack": "3.1.0",
     "yargs": "7.1.0"
   },
-  "author": "121 Services SAS",
+  "author": "Carlos Gonzalez (https://catogonzalez.wordpress.com/)",
   "license": "MIT",
-  "homepage": "https://121.services"
+  "homepage": "https://github.com/catogonzalez/chat-adapter-rocketchat",
+  "bugs": "https://github.com/catogonzalez/chat-adapter-rocketchat/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/catogonzalez/chat-adapter-rocketchat.git"
+  }
 }
