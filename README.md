@@ -22,7 +22,7 @@ The `chat-adapter-rocketchat` is listed as a dependency for the UCW so you don't
 
 ## Configuration
 
-Here's a sample configuration of the universal chat widget including the `adapterConfig` portion necessary for Rocket Chat. This was kindly provided by user sGator.
+Here's a sample configuration of the universal chat widget including the `adapterConfig` portion necessary for Rocket Chat. This was kindly provided by user sGaster.
 
 ```javascript
 config= { 
