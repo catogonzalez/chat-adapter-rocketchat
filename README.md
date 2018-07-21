@@ -12,14 +12,41 @@ This adapter implements the necessary methods for the chat widget to connect wit
 
 ## Getting Started
 
-`
+```bash
 mkdir my-chat-widget
 cd my-chat-widget
 git clone https://github.com/121services/universal-chat-widget
 npm run dev
-`
+```
 The `chat-adapter-rocketchat` is listed as a dependency for the UCW so you don't need to install it
 
+## Configuration
+
+Here's a sample configuration of the universal chat widget including the `adapterConfig` portion necessary for Rocket Chat. This was kindly provided by user sGator.
+
+```javascript
+config= { 
+  "adapter": "RocketChat", // (required)
+  "element": "#chat-widget",// css selector of element to replace in DOM when the chat widget renders (required)
+  "position": "bottom-right", // or embedded
+  "showAvatars": true,
+  "allowUploads": true,
+  "poweredByText": "121 Services", // yes, you can change this :)
+  "poweredByHost": "http://localhost:3000", // and this!
+  "adapterConfig": { 
+    "backendUrl": "https://my-instance.rocket.chat/", // your Rochet chat instance
+    "deviceId": "c683b9da-c908-4407-97dd-91e6bf2552d1", // whatever string you want to use to track your clients' messages
+     "initData": {
+        "username": 'admin',
+        "password": 'admin',
+        "data": {
+          "roomId": 'XYZ' // when mode is 'private', fill in with a room id; when mode is 'livechat' fill in a departmentId 
+        } 
+     },
+    "mode":"private" // or livechat
+  }
+}
+```
 
 ## Local development
 The following instructions are a copy from http://justjs.com/posts/npm-link-developing-your-own-npm-modules-without-tears
